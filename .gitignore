@@ -7,6 +7,12 @@
 # Unignore all dirs
 !*/
 
+# Keep files which filenames have no extenion
+!Dockerfile
+
+# Keep files which filenames have no extenion
+!.goreleaser.yml 
+
 ### Above combination will ignore all files without extension ###
 
 # Ignore files with extension `.class` & `.sm`
