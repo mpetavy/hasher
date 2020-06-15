@@ -30,7 +30,7 @@ func run() error {
 	}
 
 	if !b {
-		return &common.ErrFileNotFound{*filename}
+		return &common.ErrFileNotFound{FileName: *filename}
 	}
 
 	var hasher hash.Hash
@@ -44,7 +44,7 @@ func run() error {
 	case "sha256":
 		hasher = sha256.New()
 	default:
-		common.Fatal(fmt.Errorf("unknown hash algorithm: %s", *hashAlg))
+		common.Error(fmt.Errorf("unknown hash algorithm: %s", *hashAlg))
 	}
 
 	var file *os.File
@@ -67,7 +67,7 @@ func run() error {
 		return err
 	}
 
-	fmt.Printf("%x", hasher.Sum(nil))
+	fmt.Printf("%v", hasher.Sum(nil))
 
 	return nil
 }
