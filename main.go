@@ -17,7 +17,7 @@ var (
 )
 
 func init() {
-	common.Init("1.0.0", "2017", "simple http tool", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, run, 0)
+	common.Init(false, "1.0.0", "2017", "simple http tool", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, run, 0)
 
 	filename = flag.String("f", "", "filename to hash, '.' for STDIN")
 	hashAlg = flag.String("h", "md5", "hash algorithmn (md5,sha224,sha256)")
