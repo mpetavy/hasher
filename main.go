@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"github.com/mpetavy/common"
@@ -44,7 +45,7 @@ func run() error {
 	case "sha256":
 		hasher = sha256.New()
 	default:
-		common.Error(fmt.Errorf("unknown hash algorithm: %s", *hashAlg))
+		return fmt.Errorf("unknown hash algorithm: %s", *hashAlg)
 	}
 
 	var file *os.File
@@ -67,7 +68,7 @@ func run() error {
 		return err
 	}
 
-	fmt.Printf("%v", hasher.Sum(nil))
+	fmt.Printf("%s\n", hex.EncodeToString(hasher.Sum(nil)))
 
 	return nil
 }
