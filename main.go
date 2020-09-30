@@ -18,7 +18,7 @@ var (
 )
 
 func init() {
-	common.Init(false, "1.0.0", "2017", "simple hashing tool", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, run, 0)
+	common.Init(false, "1.0.0", "", "2017", "simple hashing tool", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, run, 0)
 
 	flag.Var(&filenames, "f", "filename(s) to hash, '.' for STDIN")
 	hashAlg = flag.String("h", "md5", "hash algorithmn (md5,sha224,sha256)")
@@ -38,7 +38,6 @@ func run() error {
 		var hasher hash.Hash
 
 		switch *hashAlg {
-		case "":
 		case "md5":
 			hasher = md5.New()
 		case "sha224":
