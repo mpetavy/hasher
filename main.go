@@ -1,78 +1,162 @@
 package main
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"flag"
 	"fmt"
 	"github.com/mpetavy/common"
-	"hash"
 	"io"
+	"io/ioutil"
 	"os"
+	"strings"
 )
 
 var (
-	filenames common.MultiValueFlag
-	hashAlg   *string
+	input   *string
+	output  *string
+	hashAlg *string
 )
+
+type hasher interface {
+	io.Writer
+	Sum(b []byte) []byte
+}
+
+type base64dEncoder struct {
+	buf *bytes.Buffer
+}
+
+func NewBase64Encoder() *base64dEncoder {
+	return &base64dEncoder{
+		buf: &bytes.Buffer{},
+	}
+}
+
+func (this base64dEncoder) Sum(b []byte) []byte {
+	_, err := this.Write(b)
+	if common.Error(err) {
+		return nil
+	}
+
+	if b != nil {
+		return nil
+	}
+
+	r := make([]byte, base64.StdEncoding.EncodedLen(this.buf.Len()))
+
+	base64.StdEncoding.Encode(r, this.buf.Bytes())
+
+	return r
+}
+
+func (this *base64dEncoder) Write(b []byte) (int, error) {
+	return this.buf.Write(b)
+}
+
+type base64dDecoder struct {
+	buf *bytes.Buffer
+}
+
+func NewBase64Decoder() *base64dDecoder {
+	return &base64dDecoder{
+		buf: &bytes.Buffer{},
+	}
+}
+
+func (this base64dDecoder) Sum(b []byte) []byte {
+	_, err := this.Write(b)
+	if common.Error(err) {
+		return nil
+	}
+
+	if b != nil {
+		return nil
+	}
+
+	r := make([]byte, base64.StdEncoding.DecodedLen(this.buf.Len()))
+
+	_, err = base64.StdEncoding.Decode(r, this.buf.Bytes())
+	if common.Error(err) {
+		return nil
+	}
+
+	return r
+}
+
+func (this *base64dDecoder) Write(b []byte) (int, error) {
+	return this.buf.Write(b)
+}
 
 func init() {
 	common.Init(false, "1.0.0", "", "2017", "simple hashing tool", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, run, 0)
 
-	flag.Var(&filenames, "f", "filename(s) to hash, '.' for STDIN")
+	input = flag.String("i", "", "input file")
+	output = flag.String("o", "", "output file")
 	hashAlg = flag.String("h", "md5", "hash algorithmn (md5,sha224,sha256)")
 }
 
 func run() error {
-	for _, filename := range filenames {
-		b, err := common.FileExists(filename)
+	if *input != "" && !common.FileExists(*input) {
+		return &common.ErrFileNotFound{FileName: *input}
+	}
+
+	var hasher hasher
+
+	switch *hashAlg {
+	case "md5":
+		hasher = md5.New()
+	case "sha224":
+		hasher = sha256.New224()
+	case "sha256":
+		hasher = sha256.New()
+	case "base64encoder":
+		hasher = NewBase64Encoder()
+	case "base64decoder":
+		hasher = NewBase64Decoder()
+	default:
+		return fmt.Errorf("unknown hash algorithm: %s", *hashAlg)
+	}
+
+	var file io.Reader
+	var err error
+
+	if *input == "" {
+		file = os.Stdin
+	} else {
+		file, err = os.Open(*input)
 		if common.Error(err) {
 			return err
 		}
 
-		if !b {
-			return &common.ErrFileNotFound{FileName: filename}
-		}
+		defer func() {
+			common.Error(file.(*os.File).Close())
+		}()
+	}
 
-		var hasher hash.Hash
+	_, err = io.Copy(hasher, file)
+	if common.Error(err) {
+		return err
+	}
 
-		switch *hashAlg {
-		case "md5":
-			hasher = md5.New()
-		case "sha224":
-			hasher = sha256.New224()
-		case "sha256":
-			hasher = sha256.New()
-		default:
-			return fmt.Errorf("unknown hash algorithm: %s", *hashAlg)
-		}
-
-		var file *os.File
-
-		if filename == "." {
-			file = os.Stdin
-		} else {
-			file, err = os.Open(filename)
-			if common.Error(err) {
-				return err
-			}
-
-			defer func() {
-				common.Error(file.Close())
-			}()
-		}
-
-		_, err = io.Copy(hasher, file)
+	if *output != "" {
+		err := ioutil.WriteFile(*output, hasher.Sum(nil), common.DefaultFileMode)
 		if common.Error(err) {
 			return err
 		}
+	} else {
+		var txt string
 
-		if !*common.FlagNoBanner {
-			fmt.Printf("%s: %s\n", filename, hex.EncodeToString(hasher.Sum(nil)))
+		if strings.Index(*hashAlg, "base64") == 0 {
+			txt = string(hasher.Sum(nil))
 		} else {
-			fmt.Printf("%s\n", hex.EncodeToString(hasher.Sum(nil)))
+			txt = hex.EncodeToString(hasher.Sum(nil))
 		}
+
+		fmt.Printf("%s\n", txt)
 	}
 
 	return nil
@@ -81,5 +165,5 @@ func run() error {
 func main() {
 	defer common.Done()
 
-	common.Run([]string{"f"})
+	common.Run(nil)
 }
