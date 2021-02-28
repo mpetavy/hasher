@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/mpetavy/common"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -143,7 +142,7 @@ func run() error {
 	}
 
 	if *output != "" {
-		err := ioutil.WriteFile(*output, hasher.Sum(nil), common.DefaultFileMode)
+		err := os.WriteFile(*output, hasher.Sum(nil), common.DefaultFileMode)
 		if common.Error(err) {
 			return err
 		}
