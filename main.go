@@ -95,7 +95,7 @@ func init() {
 
 	input = flag.String("i", "", "input file")
 	output = flag.String("o", "", "output file")
-	hashAlg = flag.String("h", "md5", "hash algorithmn (md5,sha224,sha256)")
+	hashAlg = flag.String("a", "md5", "hash algorithmn (md5,sha224,sha256)")
 }
 
 func run() error {
