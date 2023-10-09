@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"crypto/md5"
-	"crypto/sha256"
+	"crypto"
 	"encoding/base64"
 	"encoding/hex"
 	"flag"
 	"fmt"
 	"github.com/mpetavy/common"
+	"hash"
 	"io"
 	"os"
 	"strings"
@@ -18,14 +18,12 @@ var (
 	input   *string
 	output  *string
 	hashAlg *string
+	text    *string
 )
 
-type hasher interface {
-	io.Writer
-	Sum(b []byte) []byte
-}
-
 type base64dEncoder struct {
+	hash.Hash
+
 	buf *bytes.Buffer
 }
 
@@ -57,6 +55,8 @@ func (this *base64dEncoder) Write(b []byte) (int, error) {
 }
 
 type base64dDecoder struct {
+	hash.Hash
+
 	buf *bytes.Buffer
 }
 
@@ -95,7 +95,8 @@ func init() {
 
 	input = flag.String("i", "", "input file")
 	output = flag.String("o", "", "output file")
-	hashAlg = flag.String("a", "md5", "hash algorithmn (md5,sha224,sha256)")
+	hashAlg = flag.String("a", "MD5", "hash algorithmn (MD5,SHA224,SHA256,SHA512,BASE64ENC,BASE64DEC)")
+	text = flag.String("t", "", "text input")
 }
 
 func run() error {
@@ -103,19 +104,21 @@ func run() error {
 		return &common.ErrFileNotFound{FileName: *input}
 	}
 
-	var hasher hasher
+	var algorithm hash.Hash
 
-	switch *hashAlg {
-	case "md5":
-		hasher = md5.New()
-	case "sha224":
-		hasher = sha256.New224()
-	case "sha256":
-		hasher = sha256.New()
-	case "base64encoder":
-		hasher = NewBase64Encoder()
-	case "base64decoder":
-		hasher = NewBase64Decoder()
+	switch strings.ToUpper(*hashAlg) {
+	case crypto.MD5.String():
+		algorithm = crypto.MD5.New()
+	case crypto.SHA224.String():
+		algorithm = crypto.SHA224.New()
+	case crypto.SHA256.String():
+		algorithm = crypto.SHA256.New()
+	case crypto.SHA512.String():
+		algorithm = crypto.SHA512.New()
+	case "BASE64ENC":
+		algorithm = NewBase64Encoder()
+	case "BASE64DEC":
+		algorithm = NewBase64Decoder()
 	default:
 		return fmt.Errorf("unknown hash algorithm: %s", *hashAlg)
 	}
@@ -123,9 +126,12 @@ func run() error {
 	var file io.Reader
 	var err error
 
-	if *input == "" {
+	switch {
+	case *text != "":
+		file = strings.NewReader(*text)
+	case *input == "":
 		file = os.Stdin
-	} else {
+	case *input != "":
 		file, err = os.Open(*input)
 		if common.Error(err) {
 			return err
@@ -136,13 +142,13 @@ func run() error {
 		}()
 	}
 
-	_, err = io.Copy(hasher, file)
+	_, err = io.Copy(algorithm, file)
 	if common.Error(err) {
 		return err
 	}
 
 	if *output != "" {
-		err := os.WriteFile(*output, hasher.Sum(nil), common.DefaultFileMode)
+		err := os.WriteFile(*output, algorithm.Sum(nil), common.DefaultFileMode)
 		if common.Error(err) {
 			return err
 		}
@@ -150,9 +156,9 @@ func run() error {
 		var txt string
 
 		if strings.Index(*hashAlg, "base64") == 0 {
-			txt = string(hasher.Sum(nil))
+			txt = string(algorithm.Sum(nil))
 		} else {
-			txt = hex.EncodeToString(hasher.Sum(nil))
+			txt = hex.EncodeToString(algorithm.Sum(nil))
 		}
 
 		fmt.Printf("%s\n", txt)
