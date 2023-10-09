@@ -91,7 +91,7 @@ func (this *base64dDecoder) Write(b []byte) (int, error) {
 }
 
 func init() {
-	common.Init("hasher", "", "", "", "2017", "simple hashing tool", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, nil, run, 0)
+	common.Init("hasher", "1.0", "", "", "2017", "simple hashing tool", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, nil, run, 0)
 
 	input = flag.String("i", "", "input file")
 	output = flag.String("o", "", "output file")
