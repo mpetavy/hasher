@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto"
+	"embed"
 	"encoding/base64"
 	"encoding/hex"
 	"flag"
@@ -90,8 +91,11 @@ func (this *base64dDecoder) Write(b []byte) (int, error) {
 	return this.buf.Write(b)
 }
 
+//go:embed go.mod
+var resources embed.FS
+
 func init() {
-	common.Init("hasher", "1.0", "", "", "2017", "simple hashing tool", "mpetavy", fmt.Sprintf("https://github.com/mpetavy/%s", common.Title()), common.APACHE, nil, nil, nil, run, 0)
+	common.Init("", "", "", "", "simple hashing tool", "", "", "", &resources, nil, nil, run, 0)
 
 	input = flag.String("i", "", "input file")
 	output = flag.String("o", "", "output file")
