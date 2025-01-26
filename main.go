@@ -16,127 +16,156 @@ import (
 )
 
 var (
-	input   *string
-	output  *string
-	hashAlg *string
-	text    *string
+	inputFile       = flag.String("i", "", "input file")
+	outputFile      = flag.String("o", "", "output file")
+	inputAlgorithm  = flag.String("ia", "", "hash algorithmn (md5,sha224,sha256,sha512,base64)")
+	outputAlgorithm = flag.String("oa", "", "hash algorithmn (md5,sha224,sha256,sha512,base64)")
+	text            = flag.String("t", "", "text input")
+
+	notImplemented = fmt.Errorf("not implemented")
 )
-
-type base64dEncoder struct {
-	hash.Hash
-
-	buf *bytes.Buffer
-}
-
-func NewBase64Encoder() *base64dEncoder {
-	return &base64dEncoder{
-		buf: &bytes.Buffer{},
-	}
-}
-
-func (this base64dEncoder) Sum(b []byte) []byte {
-	_, err := this.Write(b)
-	if common.Error(err) {
-		return nil
-	}
-
-	if b != nil {
-		return nil
-	}
-
-	r := make([]byte, base64.StdEncoding.EncodedLen(this.buf.Len()))
-
-	base64.StdEncoding.Encode(r, this.buf.Bytes())
-
-	return r
-}
-
-func (this *base64dEncoder) Write(b []byte) (int, error) {
-	return this.buf.Write(b)
-}
-
-type base64dDecoder struct {
-	hash.Hash
-
-	buf *bytes.Buffer
-}
-
-func NewBase64Decoder() *base64dDecoder {
-	return &base64dDecoder{
-		buf: &bytes.Buffer{},
-	}
-}
-
-func (this base64dDecoder) Sum(b []byte) []byte {
-	_, err := this.Write(b)
-	if common.Error(err) {
-		return nil
-	}
-
-	if b != nil {
-		return nil
-	}
-
-	r := make([]byte, base64.StdEncoding.DecodedLen(this.buf.Len()))
-
-	_, err = base64.StdEncoding.Decode(r, this.buf.Bytes())
-	if common.Error(err) {
-		return nil
-	}
-
-	return r
-}
-
-func (this *base64dDecoder) Write(b []byte) (int, error) {
-	return this.buf.Write(b)
-}
 
 //go:embed go.mod
 var resources embed.FS
 
 func init() {
 	common.Init("", "", "", "", "simple hashing tool", "", "", "", &resources, nil, nil, run, 0)
+}
 
-	input = flag.String("i", "", "input file")
-	output = flag.String("o", "", "output file")
-	hashAlg = flag.String("a", "MD5", "hash algorithmn (MD5,SHA224,SHA256,SHA512,BASE64ENC,BASE64DEC)")
-	text = flag.String("t", "", "text input")
+type Base64Encoder struct {
+}
+
+func (this Base64Encoder) Write(p []byte) (n int, err error) {
+	common.Panic(notImplemented)
+
+	return 0, nil
+}
+
+func (this Base64Encoder) Reset() {
+	common.Panic(notImplemented)
+}
+
+func (this Base64Encoder) Size() int {
+	common.Panic(notImplemented)
+
+	return 0
+}
+
+func (this Base64Encoder) BlockSize() int {
+	common.Panic(notImplemented)
+
+	return 0
+}
+
+func (this Base64Encoder) Sum(b []byte) []byte {
+	r := make([]byte, base64.StdEncoding.EncodedLen(len(b)))
+
+	base64.StdEncoding.Encode(r, b)
+
+	return r
+}
+
+type Base64Decoder struct {
+}
+
+func (this Base64Decoder) Write(p []byte) (n int, err error) {
+	common.Panic(notImplemented)
+
+	return 0, nil
+}
+
+func (this Base64Decoder) Reset() {
+	common.Panic(notImplemented)
+}
+
+func (this Base64Decoder) Size() int {
+	common.Panic(notImplemented)
+
+	return 0
+}
+
+func (this Base64Decoder) BlockSize() int {
+	common.Panic(notImplemented)
+
+	return 0
+}
+
+func (this Base64Decoder) Sum(b []byte) []byte {
+	r := make([]byte, base64.StdEncoding.DecodedLen(len(b)))
+
+	_, err := base64.StdEncoding.Decode(r, b)
+	common.Panic(err)
+
+	return r
+}
+
+type NOPHash struct {
+	bytes.Buffer
+}
+
+func (nopHash *NOPHash) Sum(b []byte) []byte {
+	if b != nil {
+		nopHash.Write(b)
+	}
+
+	return nopHash.Buffer.Bytes()
+}
+
+func (nopHash *NOPHash) Size() int {
+	return nopHash.Len()
+}
+
+func (nopHash *NOPHash) BlockSize() int {
+	return nopHash.BlockSize()
+}
+
+func findHash(alg string, isInput bool) (hash.Hash, error) {
+	switch strings.ToUpper(alg) {
+	case "":
+		return &NOPHash{}, nil
+	case crypto.MD5.String():
+		return crypto.MD5.New(), nil
+	case crypto.SHA224.String():
+		return crypto.SHA224.New(), nil
+	case crypto.SHA256.String():
+		return crypto.SHA256.New(), nil
+	case crypto.SHA512.String():
+		return crypto.SHA512.New(), nil
+	case "BASE64":
+		if isInput {
+			return &Base64Decoder{}, nil
+		} else {
+			return &Base64Encoder{}, nil
+		}
+	default:
+		return nil, fmt.Errorf("unknown hash algorithm: %s", *inputAlgorithm)
+	}
 }
 
 func run() error {
-	if *input != "" && !common.FileExists(*input) {
-		return &common.ErrFileNotFound{FileName: *input}
+	if *inputFile != "" && !common.FileExists(*inputFile) {
+		return &common.ErrFileNotFound{FileName: *inputFile}
 	}
 
-	var algorithm hash.Hash
+	inputHash, err := findHash(*inputAlgorithm, true)
+	if common.Error(err) {
+		return err
+	}
 
-	switch strings.ToUpper(*hashAlg) {
-	case crypto.MD5.String():
-		algorithm = crypto.MD5.New()
-	case crypto.SHA224.String():
-		algorithm = crypto.SHA224.New()
-	case crypto.SHA256.String():
-		algorithm = crypto.SHA256.New()
-	case crypto.SHA512.String():
-		algorithm = crypto.SHA512.New()
-	case "BASE64ENC":
-		algorithm = NewBase64Encoder()
-	case "BASE64DEC":
-		algorithm = NewBase64Decoder()
-	default:
-		return fmt.Errorf("unknown hash algorithm: %s", *hashAlg)
+	outputHash, err := findHash(*outputAlgorithm, false)
+	if common.Error(err) {
+		return err
 	}
 
 	var file io.Reader
-	var err error
 
 	switch {
 	case *text != "":
 		file = strings.NewReader(*text)
-	case *input == "":
+	case *inputFile == "":
 		file = os.Stdin
-	case *input != "":
-		file, err = os.Open(*input)
+	case *inputFile != "":
+		file, err = os.Open(*inputFile)
 		if common.Error(err) {
 			return err
 		}
@@ -146,31 +175,31 @@ func run() error {
 		}()
 	}
 
-	_, err = io.Copy(algorithm, file)
+	ba, err := io.ReadAll(file)
 	if common.Error(err) {
 		return err
 	}
 
-	if *output != "" {
-		err := os.WriteFile(*output, algorithm.Sum(nil), common.DefaultFileMode)
+	ba = inputHash.Sum(ba)
+
+	ba = outputHash.Sum(ba)
+
+	if *outputFile != "" {
+		err := os.WriteFile(*outputFile, ba, common.DefaultFileMode)
 		if common.Error(err) {
 			return err
 		}
 	} else {
-		var txt string
-
-		if strings.Index(*hashAlg, "base64") == 0 {
-			txt = string(algorithm.Sum(nil))
+		if *outputAlgorithm != "" && *outputAlgorithm != "base64" {
+			fmt.Printf("%s\n", hex.EncodeToString(ba))
 		} else {
-			txt = hex.EncodeToString(algorithm.Sum(nil))
+			fmt.Printf("%s\n", ba)
 		}
-
-		fmt.Printf("%s\n", txt)
 	}
 
 	return nil
 }
 
 func main() {
-	common.Run(nil)
+	common.Run([]string{"i|t"})
 }
